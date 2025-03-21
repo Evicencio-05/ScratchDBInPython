@@ -92,6 +92,7 @@ class SimpleDB:
         if query["type"] == "SELECT":
             return self.select(query["table"],
                                 query["columns"] , query.get("where"))
+        return None
     
 db = SimpleDB("db.json")
 # db.create_table("users", ["id", "name", "age"])
@@ -101,4 +102,4 @@ db = SimpleDB("db.json")
 # db.insert("users", {"id": "3", "name": "Bill", "age": 4})
 print(db.select("users", "*", where={"age": {"gt": 25}}))
 print(db.select("users", ["name", "age"], where={"age": {"lt": 30}}))
-db.delete("users", where={"name": {"eq": "Bob"}})
+print(db.execute("SELECT name, age FROM users WHERE age > 25"))
