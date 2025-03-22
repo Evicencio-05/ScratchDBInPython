@@ -92,14 +92,11 @@ class SimpleDB:
         if query["type"] == "SELECT":
             return self.select(query["table"],
                                 query["columns"] , query.get("where"))
+        elif query["type"] == "INSERT INTO":
+            return self.insert(query["table"], query["values"])
         return None
     
 db = SimpleDB("db.json")
-# db.create_table("users", ["id", "name", "age"])
-# db.insert("users", {"id": "1", "name": "Alice", "age": 30})
-# db.insert("users", {"id": "4", "name": "Alex", "age": 39})
-# db.insert("users", {"id": "2", "name": "Bob", "age": 25})
 # db.insert("users", {"id": "3", "name": "Bill", "age": 4})
-print(db.select("users", "*", where={"age": {"gt": 25}}))
-print(db.select("users", ["name", "age"], where={"age": {"lt": 30}}))
-print(db.execute("SELECT name, age FROM users WHERE age > 25"))
+# print(db.execute("SELECT name, age FROM users WHERE age > 25"))
+# db.execute("INSERT INTO users (id, name, age) VALUES (3, Charlie, 22)")

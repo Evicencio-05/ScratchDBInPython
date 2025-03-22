@@ -19,5 +19,23 @@ def parse_query(query_str):
                 '<': "lt"
                 }
             query["where"][col] = {op_map[op]: val}
+    elif parts[0].upper() == "INSERT" and parts[1].upper() == "INTO":
+        query["type"] = "INSERT INTO"
+        
+        table_name: str = parts[parts.index("INTO") + 1]
+        query["table"] = table_name
+        
+        input_values = re.findall(r'\((.*?)\)', query_str)
+        
+        lists = []
+        for input in input_values:
+            items = [item.strip() for item in input.split(',')]
+            lists.append(items)
+        keys = lists[0]
+        values = lists[1]
+        values = [int(val) if val.isdigit() else val for val in values]
+        row = dict(zip(keys, values))
+        query["values"] = row
+            
             
     return query
