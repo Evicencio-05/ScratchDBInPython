@@ -94,9 +94,12 @@ class SimpleDB:
                                 query["columns"] , query.get("where"))
         elif query["type"] == "INSERT INTO":
             return self.insert(query["table"], query["values"])
+        elif query["type"] == "DELETE":
+            return self.delete(query["table"], query.get("where"))
         return None
     
 db = SimpleDB("db.json")
 # db.insert("users", {"id": "3", "name": "Bill", "age": 4})
 # print(db.execute("SELECT name, age FROM users WHERE age > 25"))
 # db.execute("INSERT INTO users (id, name, age) VALUES (3, Charlie, 22)")
+db.execute("DELETE FROM users")

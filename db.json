@@ -1,12 +1,1 @@
-{
-  "users": {
-    "columns": ["id", "name", "age"],
-    "rows": [
-      { "id": 1, "name": "Alice", "age": 30 },
-      { "id": 4, "name": "Alex", "age": 39 },
-      { "id": 3, "name": "Bill", "age": 4 },
-      { "id": 2, "name": "Bob", "age": 25 },
-      { "id": 3, "name": "Charlie", "age": 22 }
-    ]
-  }
-}
+{"users": {"columns": ["id", "name", "age"], "rows": []}}
