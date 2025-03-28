@@ -9,7 +9,19 @@ class SimpleDB:
             with open(db_file, 'r') as f:
                 self.tables = json.load(f)
         except FileNotFoundError:
-            self.tables = {}    
+            self.tables = {}
+            
+        self.indexes = {}
+        
+    def create_index(self, table_name, column):
+        if table_name not in self.tables:
+            raise ValueError("Table does not exist.")
+        
+        self.indexes.setdefault(table_name, {})[column] = {}
+        
+        for i, row in enumerate(self.tables[table_name]["rows"]):
+            val = row[column]
+            self.indexes[table_name][column].setdefault(val, []).append(i)
         
     def save(self):
         with open(self.db_file, 'w') as f:
@@ -38,6 +50,13 @@ class SimpleDB:
         self.save()
     
     def select(self, table_name, columns, where=None):
+        if where and table_name in self.indexes:
+            for col, cond in where.items():
+                if col in self.indexes[table_name] and "eq" in cond:
+                    indices = self.indexes[table_name][col].get(cond["eq"], [])
+                    rows = [self.tables[table_name]["rows"][i] for i in indices]
+                    return [{c: row[c] for c in columns} for row in rows]
+        
         if table_name not in self.tables:
             raise ValueError("Table does not exist")
         

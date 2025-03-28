@@ -1,4 +1,5 @@
 import SimpleDB
+from time import perf_counter
 
 db = SimpleDB.SimpleDB("db.json")
 
@@ -16,4 +17,9 @@ db = SimpleDB.SimpleDB("db.json")
 # print(db.execute("SELECT name, age FROM users WHERE age > 25"))
 # print(db.execute("INSERT INTO users (id, name, age) VALUES (3, Charlie, 22)"))
 # print(db.execute("DELETE FROM users"))
-print(db.execute("UPDATE users SET name = 'BERRR', word = 'TEST', age = 300 WHERE age > 100"))
+# print(db.execute("UPDATE users SET name = 'BERRR', word = 'TEST', age = 300 WHERE age > 100"))
+start_time = perf_counter()
+print(db.execute("SELECT * FROM users WHERE  = 1"))
+end_time = perf_counter()
+execution_time = end_time - start_time
+print("Execution time: {execution_time}")
