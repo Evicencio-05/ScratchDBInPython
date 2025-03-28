@@ -1,1 +1,11 @@
-{"users": {"columns": ["id", "name", "age"], "rows": []}}
+{
+  "users": {
+    "columns": ["id", "name", "age", "word"],
+    "rows": [
+      { "id": "1", "name": "B", "age": 24, "word": "updated" },
+      { "id": "2", "name": "Bi", "age": 61, "word": "updated" },
+      { "id": "4", "name": "BERRR", "age": 300, "word": "TEST" },
+      { "id": "5", "name": "Billl", "age": 4, "word": "updated" }
+    ]
+  }
+}
