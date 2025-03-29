@@ -3,7 +3,13 @@ import re
 def get_where(parts: list[any], query: dict) -> None:
     if "WHERE" in parts:
             where_idx = parts.index('WHERE')
-            col, op, val = parts[where_idx + 1], parts[where_idx + 2], int(parts[where_idx + 3])
+            col, op, val = parts[where_idx + 1], parts[where_idx + 2], parts[where_idx + 3]
+            val = int(val) if val.isdigit() else val
+            
+            if isinstance(val, str):
+                if val.startswith("'") and val.endswith("'"):
+                    val = val.strip("'")
+            
             op_map = {
                 '>': "gt",
                 '=': "eq",
@@ -12,15 +18,17 @@ def get_where(parts: list[any], query: dict) -> None:
             query["where"][col] = {op_map[op]: val}
 
 def parse_query(query_str):
-    parts = re.findall(r'\w+|[^\w\s,]', query_str)
+    pattern = r"'[^']*'|\"[^\"]*\"|\w+|[^\w\s,]"
+    parts = re.findall(pattern, query_str)
     query = {}
     
     if parts[0].upper() == 'SELECT':
         query["type"] = "SELECT"
         query["where"] = {}
         cols_end = parts.index('FROM')
-        columns_str = query_str.split('SELECT')[1].split('FROM')[0].strip()
-        query["columns"] = [col.strip() for col in columns_str.split(',')]
+        query["columns"] = parts[1:cols_end][0].split(",")
+        # columns_str = query_str.split('SELECT')[1].split('FROM')[0].strip()
+        # query["columns"] = [col.strip() for col in columns_str.split(',')]
         query["table"] = parts[cols_end + 1]
         get_where(parts, query)
     elif parts[0].upper() == "INSERT" and parts[1].upper() == "INTO":

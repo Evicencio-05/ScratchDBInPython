@@ -10,9 +10,41 @@ class SimpleDB:
                 self.tables = json.load(f)
         except FileNotFoundError:
             self.tables = {}
-            
+        
+        self.transaction_log = []
+        self.in_commit = False
+        
         self.indexes = {}
         
+    def being_transaction(self):
+        """Start a new transaction by clearing the transaction log."""
+        if self.in_commit:
+            raise RuntimeError("Cannot start transaction during commit.")
+        
+        self.transaction_log = []
+        
+    def commit(self):
+        """Apply all logged operations to the database and clear the log
+        """
+        if self.in_commit:
+            raise RuntimeError("Already in commit phase.")
+
+        self.in_commit = True
+        
+        try:
+            for op in self.transaction_log:
+                if op["type"] == "insert":
+                    self.insert(op["table"], op["row"])
+            self.transaction_log = []
+            self.save()
+        finally:
+            self.in_commit = False
+    
+    def rollback(self):
+        """Discard al operations in current transaction.
+        """
+        self.transaction_log = []
+    
     def create_index(self, table_name, column):
         if table_name not in self.tables:
             raise ValueError("Table does not exist.")
@@ -38,6 +70,15 @@ class SimpleDB:
         self.save()
         
     def insert(self, table_name, row):
+        if self.in_commit:
+            self._commit_insert(table_name, row)
+        else:
+            self.transaction_log.append({"type": "insert",
+                                        "table": table_name,
+                                        "row": row}
+                                        )
+        
+    def _commit_insert(self, table_name, row):
         if table_name not in self.tables:
             raise ValueError("Table does not exist")
         
@@ -47,7 +88,6 @@ class SimpleDB:
             raise ValueError("Row does not match table schema")
         
         table["rows"].append(row)
-        self.save()
     
     def select(self, table_name, columns, where=None):
         if where and table_name in self.indexes:
@@ -55,20 +95,23 @@ class SimpleDB:
                 if col in self.indexes[table_name] and "eq" in cond:
                     indices = self.indexes[table_name][col].get(cond["eq"], [])
                     rows = [self.tables[table_name]["rows"][i] for i in indices]
-                    return [{c: row[c] for c in columns} for row in rows]
-        
-        if table_name not in self.tables:
-            raise ValueError("Table does not exist")
-        
-        table = self.tables[table_name]
-        rows = table["rows"]
-        
-        if where:
-            rows = [row for row in rows if self._apply_where(row, where)]
-        if columns == "*":
-            return rows
+                    if columns == ["*"]:
+                        return rows
+                    else:
+                        return [{c: row[c] for c in columns} for row in rows]
+        else:
+            if table_name not in self.tables:
+                raise ValueError("Table does not exist")
             
-        return [{col: row[col] for col in columns} for row in rows]
+            table = self.tables[table_name]
+            rows = table["rows"]
+            
+            if where:
+                rows = [row for row in rows if self._apply_where(row, where)]
+            if columns == ["*"]:
+                return rows
+            else:
+                return [{col: row[col] for col in columns} for row in rows]
 
     def _apply_where(self, row, where) -> bool:
         for col, condition in where.items():
