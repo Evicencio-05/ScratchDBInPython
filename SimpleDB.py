@@ -1,5 +1,6 @@
 import json
 import parser
+from threading import Lock
 
 class SimpleDB:
     def __init__(self, db_file):
@@ -13,8 +14,13 @@ class SimpleDB:
         
         self.transaction_log = []
         self.in_commit = False
-        
+        self.locks = {}
         self.indexes = {}
+        
+    def _get_lock(self, table_name):
+        if table_name not in self.locks:
+            self.locks[table_name] = Lock()
+        return self.locks[table_name]
         
     def begin_transaction(self):
         """Start a new transaction by clearing the transaction log."""
@@ -70,13 +76,14 @@ class SimpleDB:
         self.save()
         
     def insert(self, table_name, row):
-        if self.in_commit:
-            self._commit_insert(table_name, row)
-        else:
-            self.transaction_log.append({"type": "insert",
-                                        "table": table_name,
-                                        "row": row}
-                                        )
+        with self._get_lock[table_name]:
+            if self.in_commit:
+                self._commit_insert(table_name, row)
+            else:
+                self.transaction_log.append({"type": "insert",
+                                            "table": table_name,
+                                            "row": row}
+                                            )
         
     def _commit_insert(self, table_name, row):
         if table_name not in self.tables:
@@ -90,28 +97,29 @@ class SimpleDB:
         table["rows"].append(row)
     
     def select(self, table_name, columns, where=None):
-        if where and table_name in self.indexes:
-            for col, cond in where.items():
-                if col in self.indexes[table_name] and "eq" in cond:
-                    indices = self.indexes[table_name][col].get(cond["eq"], [])
-                    rows = [self.tables[table_name]["rows"][i] for i in indices]
-                    if columns == ["*"]:
-                        return rows
-                    else:
-                        return [{c: row[c] for c in columns} for row in rows]
-        else:
-            if table_name not in self.tables:
-                raise ValueError("Table does not exist")
-            
-            table = self.tables[table_name]
-            rows = table["rows"]
-            
-            if where:
-                rows = [row for row in rows if self._apply_where(row, where)]
-            if columns == ["*"]:
-                return rows
+        with self._get_lock[table_name]:
+            if where and table_name in self.indexes:
+                for col, cond in where.items():
+                    if col in self.indexes[table_name] and "eq" in cond:
+                        indices = self.indexes[table_name][col].get(cond["eq"], [])
+                        rows = [self.tables[table_name]["rows"][i] for i in indices]
+                        if columns == ["*"]:
+                            return rows
+                        else:
+                            return [{c: row[c] for c in columns} for row in rows]
             else:
-                return [{col: row[col] for col in columns} for row in rows]
+                if table_name not in self.tables:
+                    raise ValueError("Table does not exist")
+                
+                table = self.tables[table_name]
+                rows = table["rows"]
+                
+                if where:
+                    rows = [row for row in rows if self._apply_where(row, where)]
+                if columns == ["*"]:
+                    return rows
+                else:
+                    return [{col: row[col] for col in columns} for row in rows]
 
     def _apply_where(self, row, where) -> bool:
         for col, condition in where.items():
