@@ -16,7 +16,7 @@ class SimpleDB:
         
         self.indexes = {}
         
-    def being_transaction(self):
+    def begin_transaction(self):
         """Start a new transaction by clearing the transaction log."""
         if self.in_commit:
             raise RuntimeError("Cannot start transaction during commit.")
