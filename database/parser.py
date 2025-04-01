@@ -27,8 +27,8 @@ def parse_query(query_str):
         query["where"] = {}
         cols_end = parts.index('FROM')
         query["columns"] = parts[1:cols_end][0].split(",")
-        # columns_str = query_str.split('SELECT')[1].split('FROM')[0].strip()
-        # query["columns"] = [col.strip() for col in columns_str.split(',')]
+        columns_str = query_str.split('SELECT')[1].split('FROM')[0].strip()
+        query["columns"] = [col.strip() for col in columns_str.split(',')]
         query["table"] = parts[cols_end + 1]
         get_where(parts, query)
     elif parts[0].upper() == "INSERT" and parts[1].upper() == "INTO":
@@ -37,9 +37,14 @@ def parse_query(query_str):
         table_name: str = parts[parts.index("INTO") + 1]
         query["table"] = table_name
         
-        input_values = re.findall(r'\((.*?)\)', query_str)
+        pattern = r'\((.*?)\)'
+        input_keys = re.findall(pattern, query_str.split(table_name)[1].split("VALUES")[0].strip())
+        input_values = re.findall(pattern, query_str)
         
         lists = []
+        for input in input_keys:
+            items = [item.strip() for item in input.split(',')]
+            lists.append(items)
         for input in input_values:
             items = [item.strip() for item in input.split(',')]
             lists.append(items)

@@ -1,16 +1,18 @@
+import os
 import json
-import parser
+import parser as parser
 from threading import Lock
 
 class SimpleDB:
     def __init__(self, db_file):
         self.db_file = db_file
         
-        try:
-            with open(db_file, 'r') as f:
-                self.tables = json.load(f)
-        except FileNotFoundError:
-            self.tables = {}
+        if not os.path.exists(db_file):
+            with open(db_file, 'w') as f:
+                json.dump({}, f)
+                
+        with open(db_file, 'r') as f:
+            self.tables = json.load(f)
         
         self.transaction_log = []
         self.in_commit = False
@@ -65,7 +67,7 @@ class SimpleDB:
         with open(self.db_file, 'w') as f:
             json.dump(self.tables, f)
         
-    def create_table(self, table_name, columns):
+    def create_table(self, table_name: str, columns: list):
         if table_name in self.tables:
             raise ValueError("Table already exists")
         
@@ -75,8 +77,8 @@ class SimpleDB:
         }
         self.save()
         
-    def insert(self, table_name, row):
-        with self._get_lock[table_name]:
+    def insert(self, table_name: str, row):
+        with self._get_lock(table_name):
             if self.in_commit:
                 self._commit_insert(table_name, row)
             else:
@@ -85,7 +87,7 @@ class SimpleDB:
                                             "row": row}
                                             )
         
-    def _commit_insert(self, table_name, row):
+    def _commit_insert(self, table_name: str, row):
         if table_name not in self.tables:
             raise ValueError("Table does not exist")
         
@@ -96,8 +98,8 @@ class SimpleDB:
         
         table["rows"].append(row)
     
-    def select(self, table_name, columns, where=None):
-        with self._get_lock[table_name]:
+    def select(self, table_name: str, columns: list, where=None) -> list:
+        with self._get_lock(table_name):
             if where and table_name in self.indexes:
                 for col, cond in where.items():
                     if col in self.indexes[table_name] and "eq" in cond:
@@ -169,4 +171,5 @@ class SimpleDB:
         elif query["type"] == "UPDATE":
             return self.update(query["table"], query["values"], query.get("where"))
         return None
+    
     

@@ -175,3 +175,4 @@ cython_debug/
 
 # VS code
 .vscode/
+.vs/

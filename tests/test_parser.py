@@ -1,5 +1,5 @@
 import pytest
-from parser import parse_query
+from database.parser import parse_query
 
 class TestParser:
     def test_parse_select_query(self):
