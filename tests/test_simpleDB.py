@@ -139,4 +139,3 @@ class TestSimpleDB:
 
         db.delete("test_table", None)
         assert len(db.tables["test_table"]["rows"]) == 0
-                
