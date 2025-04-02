@@ -38,9 +38,10 @@ class TestSimpleDB:
         populated_db = sdb.SimpleDB(temp_file)
         
         populated_db.create_table("test_table", ["id", "name", "age"])
-        populated_db.insert("test_table", {{"id": 1, "name": "Alice", "age": 30},
+        populated_db.insert("test_table", [{"id": 1, "name": "Alice", "age": 30},
                         {"id": 2, "name": "Bob", "age": 25},
-                        {"id": 3, "name": "Charlie", "age": 35}})
+                        {"id": 3, "name": "Charlie", "age": 35}])
+        populated_db.commit()
         
         return populated_db
     
@@ -57,10 +58,10 @@ class TestSimpleDB:
         
     def test_insert(self, db):
         db.create_table("users", ["id", "name", "age"])
-        db.insert("users", {"id": 1, "name": "Test User", "age": 20})
+        db.insert("users", [{"id": 1, "name": "Test User", "age": 20}])
         assert db.transaction_log == [{"type": "insert",
                                             "table": "users",
-                                            "row": {"id": 1, "name": "Test User", "age": 20}}]
+                                            "row": [{"id": 1, "name": "Test User", "age": 20}]}]
         db.commit()
         assert db.transaction_log == []
         assert len(db.tables["users"]["rows"]) == 1

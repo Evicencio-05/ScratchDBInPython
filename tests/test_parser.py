@@ -3,7 +3,7 @@ from database.parser import parse_query
 
 class TestParser:
     def test_parse_select_query(self):
-        query = "SELECT id,name,age FROM users WHERE age > 30"
+        query = "SELECT id, name, age FROM users WHERE age > 30"
         parsed = parse_query(query)
         
         assert parsed["type"] == "SELECT"
@@ -17,10 +17,10 @@ class TestParser:
         
         assert parsed["type"] == "INSERT INTO"
         assert parsed["table"] == "users"
-        assert parsed["values"] == {"id": 1, "name": "Alice", "age": 30}
+        assert parsed["values"] == [{"id": 1, "name": "Alice", "age": 30}]
     
     def test_parse_update_query(self):
-        query = "UPDATE users SET name='Bob', age=25 WHERE id = 1"
+        query = "UPDATE users SET name = 'Bob', age = 25 WHERE id = 1"
         parsed = parse_query(query)
         
         assert parsed["type"] == "UPDATE"

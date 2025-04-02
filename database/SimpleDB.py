@@ -1,6 +1,6 @@
 import os
 import json
-import parser as parser
+import database.parser as parser
 from threading import Lock
 
 class SimpleDB:
@@ -77,26 +77,30 @@ class SimpleDB:
         }
         self.save()
         
-    def insert(self, table_name: str, row):
+    def insert(self, table_name: str, rows: list):
         with self._get_lock(table_name):
             if self.in_commit:
-                self._commit_insert(table_name, row)
+                self._commit_insert(table_name, rows)
             else:
                 self.transaction_log.append({"type": "insert",
                                             "table": table_name,
-                                            "row": row}
+                                            "row": rows}
                                             )
         
-    def _commit_insert(self, table_name: str, row):
+    def _commit_insert(self, table_name: str, rows: list):
         if table_name not in self.tables:
             raise ValueError("Table does not exist")
         
         table = self.tables[table_name]
         
-        if set(row.keys()) != set(table["columns"]):
-            raise ValueError("Row does not match table schema")
-        
-        table["rows"].append(row)
+        if not isinstance(rows, list):
+            raise RuntimeError("Rows are not of type list")
+        else:
+            for row in rows:
+                if set(row.keys()) != set(table["columns"]):
+                    raise ValueError("Row does not match table schema")
+                
+                table["rows"].append(row)
     
     def select(self, table_name: str, columns: list, where=None) -> list:
         with self._get_lock(table_name):

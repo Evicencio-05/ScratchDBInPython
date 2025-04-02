@@ -31,15 +31,18 @@ def parse_query(query_str):
         query["columns"] = [col.strip() for col in columns_str.split(',')]
         query["table"] = parts[cols_end + 1]
         get_where(parts, query)
-    elif parts[0].upper() == "INSERT" and parts[1].upper() == "INTO":
-        query["type"] = "INSERT INTO"
         
+    elif parts[0].upper() == "INSERT" and parts[1].upper() == "INTO":
+        
+        # FIX: Doesn't account for missing values
+        
+        query["type"] = "INSERT INTO"
         table_name: str = parts[parts.index("INTO") + 1]
         query["table"] = table_name
         
         pattern = r'\((.*?)\)'
         input_keys = re.findall(pattern, query_str.split(table_name)[1].split("VALUES")[0].strip())
-        input_values = re.findall(pattern, query_str)
+        input_values = re.findall(pattern, query_str.split("VALUES")[1].strip())
         
         lists = []
         for input in input_keys:
@@ -49,10 +52,19 @@ def parse_query(query_str):
             items = [item.strip() for item in input.split(',')]
             lists.append(items)
         keys = lists[0]
-        values = lists[1]
-        values = [int(val) if val.isdigit() else val for val in values]
-        row = dict(zip(keys, values))
-        query["values"] = row
+        values = lists[1:len(lists)]
+        values = [[int(val) if val.isdigit() else val for val in value_list] for value_list in values]
+        
+        rows: list = []
+        for value_list in values:
+            for i in range(len(value_list)):
+                if isinstance(value_list[i], str):
+                    if value_list[i].startswith('\'') and value_list[i].endswith('\''):
+                        value_list[i] = value_list[i].strip('\'')
+            rows.append(dict(zip(keys, value_list)))
+        
+        query["values"] = rows
+        
     elif parts[0].upper() == "DELETE":
         query["type"] = "DELETE"
         query["where"] = {}
@@ -61,6 +73,7 @@ def parse_query(query_str):
         query["table"] = table_name
     
         get_where(parts, query)
+        
     elif parts[0].upper() == "UPDATE":
         query["type"] = "UPDATE"
         query["where"] = {}
