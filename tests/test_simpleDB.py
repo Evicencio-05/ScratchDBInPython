@@ -39,8 +39,8 @@ class TestSimpleDB:
         
         populated_db.create_table("test_table", ["id", "name", "age"])
         populated_db.insert("test_table", [{"id": 1, "name": "Alice", "age": 30},
-                        {"id": 2, "name": "Bob", "age": 25},
-                        {"id": 3, "name": "Charlie", "age": 35}])
+            {"id": 2, "name": "Bob", "age": 25},
+            {"id": 3, "name": "Charlie", "age": 35}])
         populated_db.commit()
         
         return populated_db
@@ -61,18 +61,14 @@ class TestSimpleDB:
         db.insert("users", [{"id": 1, "name": "Test User", "age": 20}])
         
         assert db.transaction_log == [{"type": "insert",
-                                            "table": "users",
-                                            "row": [{"id": 1, "name": "Test User", "age": 20}]}]
+            "table": "users",
+            "row": [{"id": 1, "name": "Test User", "age": 20}]}]
         
         db.commit()
         
         assert db.transaction_log == []
         assert len(db.tables["users"]["rows"]) == 1
-        assert db.tables["users"]["rows"][0] == {
-            'id': 1,
-            'name': 'Test User',
-            'age': 20
-        }
+        assert db.tables["users"]["rows"][0] == {'id': 1, 'name': 'Test User', 'age': 20}
         
         with pytest.raises(ValueError) as e_info:
             db._commit_insert("Non_existent_table", [{}])
@@ -89,11 +85,7 @@ class TestSimpleDB:
     def test_select(self, populated_db):
         db = populated_db
         
-        assert db.select("test_table", ['*'], {'id': {'eq': 1}}) == [{
-            'id': 1,
-            'name': 'Alice',
-            'age': 30
-        }]
+        assert db.select("test_table", ['*'], {'id': {'eq': 1}}) == [{'id': 1, 'name': 'Alice', 'age': 30}]
         
     def test_apply_where(self, populated_db):
         db = populated_db
@@ -107,3 +99,21 @@ class TestSimpleDB:
         with pytest.raises(TypeError) as e_info:
             db._apply_where(db.tables["test_table"]["rows"][0], {"age": {"eq": '30'}})
         assert str(e_info.value) == "Row value and compare value are not of the same type"
+        
+    def test_update(self, populated_db):
+        db = populated_db
+        
+        db.update("test_table", {"name": "John", "age": 20}, {"id": {"eq": 1}})
+        
+        assert db.tables["test_table"]["rows"][0] == {'id': 1, 'name': 'John', 'age': 20}
+        assert db.tables["test_table"]["rows"][1] == {"id": 2, "name": "Bob", "age": 25}
+        
+        db.update("test_table", {"name": "TEST", "age": 0}, None)
+        assert db.tables["test_table"]["rows"][0] == {"id": 1, "name": "TEST", "age": 0}
+        assert db.tables["test_table"]["rows"][1] == {"id": 2, "name": "TEST", "age": 0}
+        assert db.tables["test_table"]["rows"][2] == {"id": 3, "name": "TEST", "age": 0}
+        
+        with pytest.raises(ValueError) as e_info:
+            db.update("Non_existent_table", {"name": "TEST", "age": 0}, None)
+        assert str(e_info.value) == "Table does not exist"
+            

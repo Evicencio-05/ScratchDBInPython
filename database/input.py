@@ -1,7 +1,7 @@
 import SimpleDB as sdb
 
 def main():
-    query: str = "INSERT INTO users (id, name, age, word) VALUES (1, 'Test User1', 111, 'TEST 1'), (2, 'Test User2', 222, 'TEST 2')"
+    query: str = "UPDATE users SET name = 'Bob', age = 10, word = 'Test2' WHERE id = 1"
     
     db = sdb.SimpleDB("db.json")
     # db.insert("users", [{"id": 1, "name": "Alice", "age": 30, "word": "NULL"},
