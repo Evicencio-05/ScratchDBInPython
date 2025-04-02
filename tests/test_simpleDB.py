@@ -59,10 +59,13 @@ class TestSimpleDB:
     def test_insert(self, db):
         db.create_table("users", ["id", "name", "age"])
         db.insert("users", [{"id": 1, "name": "Test User", "age": 20}])
+        
         assert db.transaction_log == [{"type": "insert",
                                             "table": "users",
                                             "row": [{"id": 1, "name": "Test User", "age": 20}]}]
+        
         db.commit()
+        
         assert db.transaction_log == []
         assert len(db.tables["users"]["rows"]) == 1
         assert db.tables["users"]["rows"][0] == {
@@ -70,6 +73,18 @@ class TestSimpleDB:
             'name': 'Test User',
             'age': 20
         }
+        
+        with pytest.raises(ValueError) as e_info:
+            db._commit_insert("Non_existent_table", [{}])
+        assert str(e_info.value) == "Table does not exist"
+        
+        with pytest.raises(RuntimeError) as e_info:
+            db._commit_insert("users", {})
+        assert str(e_info.value) == "Rows are not of type list"
+        
+        with pytest.raises(ValueError) as e_info:
+            db._commit_insert("users", [{}])
+        assert str(e_info.value) == "Row does not match table schema"
     
     def test_select(self, populated_db):
         db = populated_db
@@ -79,3 +94,16 @@ class TestSimpleDB:
             'name': 'Alice',
             'age': 30
         }]
+        
+    def test_apply_where(self, populated_db):
+        db = populated_db
+        
+        assert db._apply_where(db.tables["test_table"]["rows"][0], {"id": {"eq": 1}}) == True
+        assert db._apply_where(db.tables["test_table"]["rows"][0], {"age": {"gt": -5}}) == True
+        assert db._apply_where(db.tables["test_table"]["rows"][0], {"age": {"eq": 25}}) == False
+        assert db._apply_where(db.tables["test_table"]["rows"][0], {"age": {"gt": 30}}) == False
+        db._apply_where(db.tables["test_table"]["rows"][0], {"name": {"eq": "Alice"}})
+        
+        with pytest.raises(TypeError) as e_info:
+            db._apply_where(db.tables["test_table"]["rows"][0], {"age": {"eq": '30'}})
+        assert str(e_info.value) == "Row value and compare value are not of the same type"

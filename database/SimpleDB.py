@@ -87,7 +87,7 @@ class SimpleDB:
                                             "row": rows}
                                             )
         
-    def _commit_insert(self, table_name: str, rows: list):
+    def _commit_insert(self, table_name: str, rows: list) -> None | ValueError | RuntimeError:
         if table_name not in self.tables:
             raise ValueError("Table does not exist")
         
@@ -102,7 +102,7 @@ class SimpleDB:
                 
                 table["rows"].append(row)
     
-    def select(self, table_name: str, columns: list, where=None) -> list:
+    def select(self, table_name: str, columns: list, where=None) -> list | ValueError:
         with self._get_lock(table_name):
             if where and table_name in self.indexes:
                 for col, cond in where.items():
@@ -127,10 +127,12 @@ class SimpleDB:
                 else:
                     return [{col: row[col] for col in columns} for row in rows]
 
-    def _apply_where(self, row, where) -> bool:
+    def _apply_where(self, row, where) -> bool | TypeError:
         for col, condition in where.items():
             for op, value in condition.items():
-                if op == "eq" and row[col] != value:
+                if not type(row[col]) == type(value):
+                    raise TypeError("Row value and compare value are not of the same type")
+                elif op == "eq" and row[col] != value:
                     return False
                 elif op == "gt" and row[col] <= value:
                     return False
@@ -175,5 +177,3 @@ class SimpleDB:
         elif query["type"] == "UPDATE":
             return self.update(query["table"], query["values"], query.get("where"))
         return None
-    
-    
