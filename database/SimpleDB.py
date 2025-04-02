@@ -152,7 +152,7 @@ class SimpleDB:
                 rows[i].update(set_values)
         self.save()
         
-    def delete(self, table_name, where=None) -> None:
+    def delete(self, table_name, where=None) -> None | ValueError | TypeError:
         if table_name not in self.tables:
             raise ValueError("Table does not exist")
         

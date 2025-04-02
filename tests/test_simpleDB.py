@@ -116,4 +116,27 @@ class TestSimpleDB:
         with pytest.raises(ValueError) as e_info:
             db.update("Non_existent_table", {"name": "TEST", "age": 0}, None)
         assert str(e_info.value) == "Table does not exist"
-            
+        
+    def test_delete(self, populated_db):
+        db = populated_db
+        
+        with pytest.raises(ValueError) as e_info:
+            db.delete("Non_existent_table", None)
+        assert str(e_info.value) == "Table does not exist"
+        
+        with pytest.raises(TypeError) as e_info:
+            db.delete("test_table", {"id": {"eq": '1'}})
+        assert str(e_info.value) == "Row value and compare value are not of the same type"
+        
+        db.delete("test_table", {"id": {"eq": 1}})
+        assert len(db.tables["test_table"]["rows"]) == 2
+        assert db.select("test_table", ['*'], {'id': {'eq': 1}}) == []
+        
+        db.delete("test_table", {"id": {"eq": 4}})
+        assert len(db.tables["test_table"]["rows"]) == 2
+        assert db.select("test_table", ['*'], {'id': {'eq': 2}}) == [{"id": 2, "name": "Bob", "age": 25}]
+        assert db.select("test_table", ['*'], {'id': {'eq': 3}}) == [{"id": 3, "name": "Charlie", "age": 35}]
+
+        db.delete("test_table", None)
+        assert len(db.tables["test_table"]["rows"]) == 0
+                
