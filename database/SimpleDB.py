@@ -1,5 +1,6 @@
 import os
 import json
+import re
 import database.parser as parser
 from threading import Lock
 
@@ -87,6 +88,23 @@ class SimpleDB:
                                             "row": rows}
                                             )
         
+    def _update_with_real_keys(temp_dict: dict, key_map: list) -> dict:
+        result = {}
+        
+        pattern = r'^temp_\d+$'
+        for key, value in temp_dict.items():
+            if bool(re.match(pattern, key)):
+                index = int(key.split('_')[1])
+                
+                if index < len(key_map):
+                    result[key_map[index]] = value
+                else:
+                    result[key] = value
+            else:
+                result[key] = value
+        
+        return result
+        
     def _commit_insert(self, table_name: str, rows: list) -> None | ValueError | RuntimeError:
         if table_name not in self.tables:
             raise ValueError("Table does not exist")
@@ -97,6 +115,7 @@ class SimpleDB:
             raise RuntimeError("Rows are not of type list")
         else:
             for row in rows:
+                row = _update_with_real_keys(row, table["columns"])
                 if set(row.keys()) != set(table["columns"]):
                     raise ValueError("Row does not match table schema")
                 
@@ -177,3 +196,5 @@ class SimpleDB:
         elif query["type"] == "UPDATE":
             return self.update(query["table"], query["values"], query.get("where"))
         return None
+    
+    

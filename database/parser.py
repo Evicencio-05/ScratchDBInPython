@@ -57,23 +57,32 @@ def insert_query(parts: list, query: dict, query_str) -> dict:
     input_values = re.findall(pattern, query_str.split("VALUES")[1].strip())
     
     lists = []
-    for input in input_keys:
-        items = [item.strip() for item in input.split(',')]
-        lists.append(items)
+    if len(input_keys) == 0:
+        lists.append([])
+    else:
+        for input in input_keys:
+            items = [item.strip() for item in input.split(',')]
+            lists.append(items)
+            
     for input in input_values:
         items = [item.strip() for item in input.split(',')]
         lists.append(items)
-    keys = lists[0]
+    keys = lists[0]    
     values = lists[1:len(lists)]
+    
+    # FIX: 0010 is converted to 10. Needs to stay 0010
     values = [[int(val) if val.isdigit() else val for val in value_list] for value_list in values]
     
     rows: list = []
     for value_list in values:
         for i in range(len(value_list)):
             if isinstance(value_list[i], str):
-                if value_list[i].startswith('\'') and value_list[i].endswith('\''):
-                    value_list[i] = value_list[i].strip('\'')
-        rows.append(dict(zip(keys, value_list)))
+                if value_list[i].startswith("'") and value_list[i].endswith("'"):
+                    value_list[i] = value_list[i].strip("'")
+        if keys == []:
+            rows.append({f"temp_{i}": value for i, value in enumerate(value_list)})
+        else:
+            rows.append(dict(zip(keys, value_list)))
     
     query["values"] = rows
     
