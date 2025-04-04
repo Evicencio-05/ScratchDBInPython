@@ -1,6 +1,7 @@
 import os
 import json
 import re
+import uuid
 import database.parser as parser
 from threading import Lock
 
@@ -87,8 +88,8 @@ class SimpleDB:
                                             "table": table_name,
                                             "row": rows}
                                             )
-        
-    def _update_with_real_keys(temp_dict: dict, key_map: list) -> dict:
+
+    def _update_with_real_keys(self, temp_dict: dict, key_map: list) -> dict:
         result = {}
         
         pattern = r'^temp_\d+$'
@@ -104,7 +105,7 @@ class SimpleDB:
                 result[key] = value
         
         return result
-        
+
     def _commit_insert(self, table_name: str, rows: list) -> None | ValueError | RuntimeError:
         if table_name not in self.tables:
             raise ValueError("Table does not exist")
@@ -115,9 +116,12 @@ class SimpleDB:
             raise RuntimeError("Rows are not of type list")
         else:
             for row in rows:
-                row = _update_with_real_keys(row, table["columns"])
-                if set(row.keys()) != set(table["columns"]):
+                if not set(row.keys()).issubset(set(table["columns"])) or len(row.keys()) == 0:
                     raise ValueError("Row does not match table schema")
+                
+                row = self._update_with_real_keys(row, table["columns"])
+                row = self._set_row_id(row)
+                row = self._align_row_to_schema(table_name, row)
                 
                 table["rows"].append(row)
     
@@ -197,4 +201,13 @@ class SimpleDB:
             return self.update(query["table"], query["values"], query.get("where"))
         return None
     
-    
+    def _set_row_id(self, row: dict) -> dict:
+        new_id: dict = {"id": str(uuid.uuid4())}
+        new_id.update(row)
+        return new_id
+
+    def _align_row_to_schema(self, table_name: str, row: dict) -> dict:
+        result = {}
+        for key in self.tables[table_name]["columns"]:
+            result[key] = row.get(key, None)
+        return result
