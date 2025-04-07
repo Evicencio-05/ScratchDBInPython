@@ -27,14 +27,16 @@ class SimpleDB:
         return self.locks[table_name]
         
     def begin_transaction(self):
-        """Start a new transaction by clearing the transaction log."""
+        """
+        Start a new transaction by clearing the transaction log."""
         if self.in_commit:
             raise RuntimeError("Cannot start transaction during commit.")
         
         self.transaction_log = []
         
     def commit(self):
-        """Apply all logged operations to the database and clear the log
+        """
+        Apply all logged operations to the database and clear the log
         """
         if self.in_commit:
             raise RuntimeError("Already in commit phase.")
@@ -51,7 +53,8 @@ class SimpleDB:
             self.in_commit = False
     
     def rollback(self):
-        """Discard al operations in current transaction.
+        """
+        Discard all operations in current transaction.
         """
         self.transaction_log = []
     
@@ -66,10 +69,16 @@ class SimpleDB:
             self.indexes[table_name][column].setdefault(val, []).append(i)
         
     def save(self):
+        """
+        Save new data to json file.
+        """
         with open(self.db_file, 'w') as f:
             json.dump(self.tables, f)
         
     def create_table(self, table_name: str, columns: list):
+        """
+        Create new a new table. Duh...
+        """
         if table_name in self.tables:
             raise ValueError("Table already exists")
         
@@ -80,6 +89,9 @@ class SimpleDB:
         self.save()
         
     def insert(self, table_name: str, rows: list):
+        """
+        Applies new rows to transaction log to wait for commit.
+        """
         with self._get_lock(table_name):
             if self.in_commit:
                 self._commit_insert(table_name, rows)
@@ -90,6 +102,9 @@ class SimpleDB:
                                             )
 
     def _update_with_real_keys(self, temp_dict: dict, key_map: list) -> dict:
+        """
+        Updates an entry with all keys from the parent table.
+        """
         result = {}
         
         pattern = r'^temp_\d+$'
@@ -107,6 +122,9 @@ class SimpleDB:
         return result
 
     def _commit_insert(self, table_name: str, rows: list) -> None | ValueError | RuntimeError:
+        """
+        Inserts values into table from transaction log once committed.
+        """
         if table_name not in self.tables:
             raise ValueError("Table does not exist")
         
@@ -126,6 +144,9 @@ class SimpleDB:
                 table["rows"].append(row)
     
     def select(self, table_name: str, columns: list, where=None) -> list | ValueError:
+        """
+        Select row(s) from the table. Faster if an index is previously created.
+        """
         with self._get_lock(table_name):
             if where and table_name in self.indexes:
                 for col, cond in where.items():
@@ -151,6 +172,9 @@ class SimpleDB:
                     return [{col: row[col] for col in columns} for row in rows]
 
     def _apply_where(self, row, where) -> bool | TypeError:
+        """
+        Checks if value (if comparable) is greater than ('gt'), less than ('lt'), or equal ('eq') to parsed value.
+        """
         for col, condition in where.items():
             for op, value in condition.items():
                 if not type(row[col]) == type(value):
@@ -164,6 +188,9 @@ class SimpleDB:
         return True
     
     def update(self, table_name, set_values, where=None) -> None:
+        """
+        Updates the table with new values.
+        """
         if table_name not in self.tables:
             raise ValueError("Table does not exist")
         
@@ -176,6 +203,9 @@ class SimpleDB:
         self.save()
         
     def delete(self, table_name, where=None) -> None | ValueError | TypeError:
+        """
+        Deletes row(s) from the table.
+        """
         if table_name not in self.tables:
             raise ValueError("Table does not exist")
         
@@ -189,6 +219,9 @@ class SimpleDB:
         self.save()
         
     def execute(self, query_str):
+        """
+        Parses the string and continues to appropriate function.
+        """
         query: dict = parser.parse_query(query_str)
         if query["type"] == "SELECT":
             return self.select(query["table"],
@@ -202,11 +235,20 @@ class SimpleDB:
         return None
     
     def _set_row_id(self, row: dict) -> dict:
+        """
+        Set row id for rows. Not included in parsed values.
+        
+        * Need to make immutable.
+        * Might make optional.
+        """
         new_id: dict = {"id": str(uuid.uuid4())}
         new_id.update(row)
         return new_id
 
     def _align_row_to_schema(self, table_name: str, row: dict) -> dict:
+        """
+        Fixes the rows to fit with schema.
+        """
         result = {}
         for key in self.tables[table_name]["columns"]:
             result[key] = row.get(key, None)

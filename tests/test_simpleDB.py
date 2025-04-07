@@ -1,5 +1,8 @@
 import json
 import pytest
+import threading
+import time
+import os
 import database.SimpleDB as sdb
 
 class TestSimpleDB:
@@ -58,6 +61,7 @@ class TestSimpleDB:
         
     def test_insert(self, db):
         db.create_table("users", ["id", "name", "age"])
+        db.begin_transaction()
         db.insert("users", [{"id": 1, "name": "Test User", "age": 20}])
         
         assert db.transaction_log == [{"type": "insert",
@@ -139,3 +143,27 @@ class TestSimpleDB:
 
         db.delete("test_table", None)
         assert len(db.tables["test_table"]["rows"]) == 0
+        
+    def test_concurrent_threads(self, db):
+        number_of_threads = 10
+        rows_per_thread = 50
+        threads = []
+        
+        db.create_table("test_table", ["id", "name", "value"])
+        
+        def insert_rows(thread_id):
+            for i in range(rows_per_thread):
+                db.begin_transaction()
+                db.insert("test_table", [{"name": f"name_{thread_id}_{i}", "value": i}])
+                db.commit()
+                
+        for i in range(number_of_threads):
+            thread = threading.Thread(target=insert_rows, args=(i,))
+            threads.append(thread)
+            thread.start()
+            
+        for thread in threads:
+            thread.join()
+            
+        rows = db.select("test_table", ["*"])
+        assert len(rows) == number_of_threads * rows_per_thread 
