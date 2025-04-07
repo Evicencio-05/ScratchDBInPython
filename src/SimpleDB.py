@@ -157,34 +157,6 @@ class SimpleDB:
                 
                 table["rows"].append(row)
     
-    # def select(self, table_name: str, columns: list, where=None) -> list | ValueError:
-    #     """
-    #     Select row(s) from the table. Faster if an index is previously created.
-    #     """
-    #     with self._get_lock(table_name):
-    #         if where and table_name in self.indexes:
-    #             for col, cond in where.items():
-    #                 if col in self.indexes[table_name] and "eq" in cond:
-    #                     indices = self.indexes[table_name][col].get(cond["eq"], [])
-    #                     rows = [self.tables[table_name]["rows"][i] for i in indices]
-    #                     if columns == ["*"]:
-    #                         return rows
-    #                     else:
-    #                         return [{c: row[c] for c in columns} for row in rows]
-    #         else:
-    #             if table_name not in self.tables:
-    #                 raise ValueError("Table does not exist")
-                
-    #             table = self.tables[table_name]
-    #             rows = table["rows"]
-                
-    #             if where:
-    #                 rows = [row for row in rows if self._apply_where(row, where)]
-    #             if columns == ["*"]:
-    #                 return rows
-    #             else:
-    #                 return [{col: row[col] for col in columns} for row in rows]
-    
     def select(self, table_name: str, columns: list, where=None):
         if table_name not in self.tables:
             raise ValueError("Table does not exist")
