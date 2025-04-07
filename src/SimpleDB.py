@@ -21,6 +21,8 @@ class SimpleDB:
         self.locks = {}
         self.indexes = {}
         self.tx_lock = Lock()
+        self.metadata_lock = Lock()
+        self.save_lock = Lock()
         
     def _get_lock(self, table_name):
         if table_name not in self.locks:
@@ -50,7 +52,10 @@ class SimpleDB:
             try:
                 for op in self.transaction_log:
                     if op["type"] == "insert":
-                        self.insert(op["table"], op["row"])
+                        table = op["table"]
+                        rows = op["row"]
+                        with self._get_lock(table):
+                            self._commit_insert(table, rows)
                 self.transaction_log = []
                 self.save()
             finally:
@@ -64,34 +69,40 @@ class SimpleDB:
             self.transaction_log = []
     
     def create_index(self, table_name, column):
-        if table_name not in self.tables:
-            raise ValueError("Table does not exist.")
-        
-        self.indexes.setdefault(table_name, {})[column] = {}
-        
-        for i, row in enumerate(self.tables[table_name]["rows"]):
-            val = row[column]
-            self.indexes[table_name][column].setdefault(val, []).append(i)
+        """
+        Create an index for columns to make searching more efficient.
+        """
+        with self.metadata_lock:
+            if table_name not in self.tables:
+                raise ValueError("Table does not exist.")
+            with self._get_lock(table_name):            
+                self.indexes.setdefault(table_name, {})[column] = {}
+                
+                for i, row in enumerate(self.tables[table_name]["rows"]):
+                    val = row[column]
+                    self.indexes[table_name][column].setdefault(val, []).append(i)
         
     def save(self):
         """
         Save new data to json file.
         """
-        with open(self.db_file, 'w') as f:
-            json.dump(self.tables, f)
+        with self.save_lock:
+            with open(self.db_file, 'w') as f:
+                json.dump(self.tables, f)
         
     def create_table(self, table_name: str, columns: list):
         """
         Create new a new table. Duh...
         """
-        if table_name in self.tables:
-            raise ValueError("Table already exists")
-        
-        self.tables[table_name] = {
-            "columns": columns,
-            "rows": []
-        }
-        self.save()
+        with self.metadata_lock:
+            if table_name in self.tables:
+                raise ValueError("Table already exists")
+            
+            self.tables[table_name] = {
+                "columns": columns,
+                "rows": []
+            }
+            self.save()
         
     def insert(self, table_name: str, rows: list):
         """
@@ -196,32 +207,34 @@ class SimpleDB:
         """
         Updates the table with new values.
         """
-        if table_name not in self.tables:
-            raise ValueError("Table does not exist")
-        
-        table = self.tables[table_name]
-        rows = table["rows"]
-        
-        for i, row in enumerate(rows):
-            if not where or self._apply_where(row, where):
-                rows[i].update(set_values)
-        self.save()
+        with self._get_lock(table_name):
+            if table_name not in self.tables:
+                raise ValueError("Table does not exist")
+            
+            table = self.tables[table_name]
+            rows = table["rows"]
+            
+            for i, row in enumerate(rows):
+                if not where or self._apply_where(row, where):
+                    rows[i].update(set_values)
+            self.save()
         
     def delete(self, table_name, where=None) -> None | ValueError | TypeError:
         """
         Deletes row(s) from the table.
         """
-        if table_name not in self.tables:
-            raise ValueError("Table does not exist")
-        
-        table = self.tables[table_name]
-        
-        if not where:
-            table["rows"] = []
-        else:
-            table["rows"] = [row for row in table["rows"] if not 
-                            self._apply_where(row, where)]
-        self.save()
+        with self._get_lock(table_name):
+            if table_name not in self.tables:
+                raise ValueError("Table does not exist")
+            
+            table = self.tables[table_name]
+            
+            if not where:
+                table["rows"] = []
+            else:
+                table["rows"] = [row for row in table["rows"] if not 
+                                self._apply_where(row, where)]
+            self.save()
         
     def execute(self, query_str):
         """
