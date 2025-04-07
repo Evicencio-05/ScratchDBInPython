@@ -3,7 +3,7 @@ import pytest
 import threading
 import time
 import os
-import database.SimpleDB as sdb
+import src.SimpleDB as sdb
 
 class TestSimpleDB:
     

@@ -2,7 +2,7 @@ import os
 import json
 import re
 import uuid
-import database.parser as parser
+import src.parser as parser
 from threading import Lock
 
 class SimpleDB:
