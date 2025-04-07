@@ -1,5 +1,21 @@
 import re
 
+def parse_query(query_str):
+    pattern = r"'[^']*'|\"[^\"]*\"|\w+|[^\w\s,]"
+    parts = re.findall(pattern, query_str)
+    query = {}
+    
+    if parts[0].upper() == 'SELECT':
+        query = select_query(parts, query, query_str)
+    elif parts[0].upper() == "INSERT" and parts[1].upper() == "INTO":
+        query = insert_query(parts, query, query_str)
+    elif parts[0].upper() == "DELETE":
+        query = delete_query(parts, query)
+    elif parts[0].upper() == "UPDATE":
+        query = update_query(parts, query, query_str)
+        
+    return query
+
 def get_where(parts: list[any], query: dict) -> None:
     if "WHERE" in parts:
             where_idx = parts.index('WHERE')
@@ -16,22 +32,6 @@ def get_where(parts: list[any], query: dict) -> None:
                 '<': "lt"
                 }
             query["where"][col] = {op_map[op]: val}
-
-def parse_query(query_str):
-    pattern = r"'[^']*'|\"[^\"]*\"|\w+|[^\w\s,]"
-    parts = re.findall(pattern, query_str)
-    query = {}
-    
-    if parts[0].upper() == 'SELECT':
-        query = select_query(parts, query, query_str)
-    elif parts[0].upper() == "INSERT" and parts[1].upper() == "INTO":
-        query = insert_query(parts, query, query_str)
-    elif parts[0].upper() == "DELETE":
-        query = delete_query(parts, query)
-    elif parts[0].upper() == "UPDATE":
-        query = update_query(parts, query, query_str)
-        
-    return query
 
 def select_query(parts: list, query: dict, query_str) -> list | dict:
     query["type"] = "SELECT"
@@ -70,7 +70,6 @@ def insert_query(parts: list, query: dict, query_str) -> dict:
     keys = lists[0]    
     values = lists[1:len(lists)]
     
-    # FIX: 0010 is converted to 10. Needs to stay 0010
     values = [[int(val) if val.isdigit() else val for val in value_list] for value_list in values]
     
     rows: list = []

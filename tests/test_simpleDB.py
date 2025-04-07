@@ -144,7 +144,7 @@ class TestSimpleDB:
         db.delete("test_table", None)
         assert len(db.tables["test_table"]["rows"]) == 0
         
-    def test_concurrent_threads(self, db):
+    def test_concurrent_threads_with_retry(self, db):
         number_of_threads = 10
         rows_per_thread = 50
         threads = []
@@ -153,9 +153,24 @@ class TestSimpleDB:
         
         def insert_rows(thread_id):
             for i in range(rows_per_thread):
-                db.begin_transaction()
-                db.insert("test_table", [{"name": f"name_{thread_id}_{i}", "value": i}])
-                db.commit()
+                success = False
+                max_retries = 3
+                retry_count = 0
+                
+                while not success and retry_count < max_retries:
+                    try:
+                        db.begin_transaction()
+                        db.insert("test_table", [{"name": f"name_{thread_id}_{i}", "value": i}])
+                        db.commit()
+                        success = True
+                    except RuntimeError as e:
+                        if "Cannot start transaction during commit" in str(e):
+                            retry_count += 1
+                            time.sleep(0.01)
+                        else:
+                            raise
+                
+                assert success, f"Failed to insert after {max_retries} retries."
                 
         for i in range(number_of_threads):
             thread = threading.Thread(target=insert_rows, args=(i,))

@@ -20,6 +20,7 @@ class SimpleDB:
         self.in_commit = False
         self.locks = {}
         self.indexes = {}
+        self.tx_lock = Lock()
         
     def _get_lock(self, table_name):
         if table_name not in self.locks:
@@ -28,35 +29,39 @@ class SimpleDB:
         
     def begin_transaction(self):
         """
-        Start a new transaction by clearing the transaction log."""
-        if self.in_commit:
-            raise RuntimeError("Cannot start transaction during commit.")
+        Start a new transaction by clearing the transaction log.
+        """
+        with self.tx_lock:
+            if self.in_commit:
+                raise RuntimeError("Cannot start transaction during commit.")
         
-        self.transaction_log = []
+            self.transaction_log = []
         
     def commit(self):
         """
         Apply all logged operations to the database and clear the log
         """
-        if self.in_commit:
-            raise RuntimeError("Already in commit phase.")
+        with self.tx_lock:
+            if self.in_commit:
+                raise RuntimeError("Already in commit phase.")
 
-        self.in_commit = True
-        
-        try:
-            for op in self.transaction_log:
-                if op["type"] == "insert":
-                    self.insert(op["table"], op["row"])
-            self.transaction_log = []
-            self.save()
-        finally:
-            self.in_commit = False
+            self.in_commit = True
+            
+            try:
+                for op in self.transaction_log:
+                    if op["type"] == "insert":
+                        self.insert(op["table"], op["row"])
+                self.transaction_log = []
+                self.save()
+            finally:
+                self.in_commit = False
     
     def rollback(self):
         """
         Discard all operations in current transaction.
         """
-        self.transaction_log = []
+        with self.tx_lock:
+            self.transaction_log = []
     
     def create_index(self, table_name, column):
         if table_name not in self.tables:
